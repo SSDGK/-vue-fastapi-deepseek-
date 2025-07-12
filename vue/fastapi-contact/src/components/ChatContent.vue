@@ -29,9 +29,9 @@
                     <div :class="['message', msg.role]" v-html="renderMarkdown(msg.content)"></div>
                 </div>
             </div>
-            <div v-if="waiting" class="message assistant">
-                {{ content }}
-            </div>
+            <!-- <div v-if="waiting" class="message assistant">
+                {{ waiting_content }}
+            </div> -->
             <p>请开始你的对话~</p>
         </div>
         <div class="input-area">
@@ -51,7 +51,7 @@ export default {
         return {
             inputMessage: '',
             messages: [],
-            content: "加载中...",
+            waiting_content: "加载中...",
             waiting: false,
             curModel: 'Deepseek',
             models: ['Deepseek', 'Chatgpt', '通义千问']
@@ -86,25 +86,32 @@ export default {
                     body: JSON.stringify({ "message": this.messages })
                 });
 
+                const aiMessage = {
+                    role: 'assistant',
+                    model: this.curModel,
+                    content: ''
+                };
+                this.messages.push(aiMessage);
+                const aiIndex = this.messages.length - 1;
+
+                // 流式处理
                 const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let tmp = '';
+                const decoder = new TextDecoder();
+
+                // 在循环中逐步更新内容
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-                    const chunk = decoder.decode(value, { stream: true }).replace(/^data: /, "");
-                    console.log('Received chunk:', chunk);
-                    tmp += chunk;
+                    if (done) break;
+
+                    const eventData = decoder.decode(value);
+
+                    // 直接更新最后一条消息内容
+                    this.messages[aiIndex].content += eventData;
+                    console.log(eventData)
+                    // 触发Vue的响应式更新
+                    this.$forceUpdate();
                 }
-
-                this.messages.push({
-                    "role": 'assistant',
-                    "model": this.curModel,
-                    "content": tmp
-                });
-
+                this.waiting = false;
             } catch (error) {
                 console.error('请求失败:', error);
                 this.messages.push({
