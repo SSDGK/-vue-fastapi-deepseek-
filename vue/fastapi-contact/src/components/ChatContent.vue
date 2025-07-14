@@ -1,7 +1,7 @@
 <template>
     <div class="chat-container">
         <div class="model-selector-container">
-            <select id="model-selector" v-model="curModel">
+            <select id="model-selector" v-model="curModel" @change="whenChangeModel">
                 <option v-for="(model, index) in models" :value="model" :key="index">{{ model }}</option>
             </select>
         </div>
@@ -54,10 +54,24 @@ export default {
             waiting_content: "加载中...",
             waiting: false,
             curModel: 'Deepseek',
-            models: ['Deepseek', 'Chatgpt', '通义千问']
+            models: ['Deepseek', 'Chatgpt', '通义千问'],
+            previousModel: ''
         };
     },
-    methods: {
+    mounted() {
+        this.previousModel = this.curModel;
+    },
+        methods: {
+        whenChangeModel(event) {
+            const newModel = event.target.value;
+
+            if (confirm('切换模型将清空当前对话记录，确定要切换吗？')) {
+                this.messages = [];
+                this.previousModel = newModel;
+            } else {
+                this.curModel = this.previousModel;
+            }
+        },
         getRoleName(role) {
             const roleNames = {
                 'user': '用户',
